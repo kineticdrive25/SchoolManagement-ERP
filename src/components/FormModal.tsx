@@ -157,8 +157,10 @@ const FormModal = ({
   return (
     <>
       <button
+        type="button"
         className={`${size} flex items-center justify-center rounded-full ${bgColor}`}
         onClick={() => setOpen(true)}
+        aria-label={`${type === "create" ? "Create" : type === "update" ? "Update" : "Delete"} ${table}`}
       >
         <Image src={`/${type}.png`} alt="" width={16} height={16} />
       </button>
