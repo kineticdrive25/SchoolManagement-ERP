@@ -1,3 +1,6 @@
+
+export const dynamic = "force-dynamic";
+
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalendarContainer";
 import BigCalendar from "@/components/BigCalender";
