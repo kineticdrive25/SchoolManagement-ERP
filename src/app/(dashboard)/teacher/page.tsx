@@ -1,5 +1,7 @@
+export const dynamic = 'force-dynamic';
 
-export const dynamic = "force-dynamic";
+
+
 
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalendarContainer";
@@ -25,3 +27,4 @@ const TeacherPage = () => {
 };
 
 export default TeacherPage;
+
