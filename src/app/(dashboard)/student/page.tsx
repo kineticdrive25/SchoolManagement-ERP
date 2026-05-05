@@ -17,6 +17,9 @@ const StudentPage = async () => {
       students: { some: { id: userId! } },
     },
   });
+  if (!classItem || classItem.length === 0) {
+  return <div>No class assigned to this student yet.</div>;
+}
 
   console.log(classItem);
   return (
