@@ -34,8 +34,9 @@ export const teacherSchema = z.object({
   email: z
     .string()
     .email({ message: "Invalid email address!" })
-    .optional()
-    .or(z.literal("")),
+    
+    .min(1, { message: "Email is required to send login invite!" }),
+    
   phone: z.string().optional(),
   address: z.string(),
   img: z.string().optional(),
@@ -63,8 +64,7 @@ export const studentSchema = z.object({
   email: z
     .string()
     .email({ message: "Invalid email address!" })
-    .optional()
-    .or(z.literal("")),
+    .min(1, { message: "Email is required!" }),
   phone: z.string().optional(),
   address: z.string(),
   img: z.string().optional(),
@@ -87,3 +87,13 @@ export const examSchema = z.object({
 });
 
 export type ExamSchema = z.infer<typeof examSchema>;
+export const eventSchema = z.object({
+  id: z.coerce.number().optional(),
+  title: z.string().min(1, { message: "Title is required!" }),
+  description: z.string().min(1, { message: "Description is required!" }),
+  startTime: z.coerce.date({ message: "Start time is required!" }),
+  endTime: z.coerce.date({ message: "End time is required!" }),
+  classId: z.coerce.number().optional(),
+});
+
+export type EventSchema = z.infer<typeof eventSchema>;

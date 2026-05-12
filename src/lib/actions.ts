@@ -10,6 +10,9 @@ import {
 } from "./formValidationSchemas";
 import prisma from "./prisma";
 import { clerkClient } from "@clerk/nextjs/server";
+import {Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
 type CurrentState = { success: boolean; error: boolean; message?: string };
 
@@ -120,14 +123,22 @@ export const createTeacher = async (
   data: TeacherSchema
 ) => {
   try {
+    const tempPassword = data.password && data.password.trim() !== ""
+  ? data.password
+  : Math.random().toString(36).slice(-12) + "Aa1";
+    
+    // Step 1: Create the Clerk user
     const user = await clerkClient.users.createUser({
       username: data.username,
-      password: data.password,
+      emailAddress: [data.email!],
       firstName: data.name,
       lastName: data.surname,
       publicMetadata: { role: "teacher" },
+      skipPasswordChecks: true,
+      password: tempPassword,
     });
 
+    // Step 2: Save to DB
     await prisma.teacher.create({
       data: {
         id: user.id,
@@ -148,6 +159,22 @@ export const createTeacher = async (
         },
       },
     });
+
+    // Step 3: Send ONE welcome email via Resend with the temp password
+    await resend.emails.send({
+      from: "SchooLama <onboarding@golfestatee.in>",
+      to: data.email!,
+      subject: "Welcome to SchooLama - Your Login Details",
+      html: `
+        <h2>Welcome to SchooLama, ${data.name}!</h2>
+        <p>Your account has been created. Here are your login details:</p>
+        <p><strong>Username:</strong> ${data.username}</p>
+        <p><strong>Login URL:</strong> <a href="https://golfestatee.in">https://golfestatee.in</a></p>
+        <p>your temporary password is: ${tempPassword}</p>
+      `,
+    });
+
+    revalidatePath("/list/teachers");
     return { success: true, error: false };
   } catch (err) {
     console.log(err);
@@ -230,13 +257,28 @@ export const createStudent = async (
       return { success: false, error: true, message: "Class capacity is full." };
     }
 
+    // Create Clerk user with email
     const user = await clerkClient.users.createUser({
       username: data.username,
-      password: data.password,
+      emailAddress: [data.email!],
       firstName: data.name,
       lastName: data.surname,
       publicMetadata: { role: "student" },
+      skipPasswordChecks: true,
+      password: Math.random().toString(36).slice(-12) + "Aa1!", // temp random password
     });
+
+    // Send invitation email - user will set their own password
+    try {
+      await clerkClient.invitations.createInvitation({
+        emailAddress: data.email!,
+        publicMetadata: { role: "student" },
+        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://golfestatee.in"}/`,
+        ignoreExisting: true,
+      });
+    } catch (inviteErr) {
+      console.log("Invite email error (non-critical):", inviteErr);
+    }
 
     await prisma.student.create({
       data: {
@@ -371,6 +413,67 @@ export const deleteExam = async (
     await prisma.exam.delete({
       where: { id: parseInt(id) },
     });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true, message: (err as any)?.message ?? "" };
+  }
+};
+export const createEvent = async (
+  currentState: CurrentState,
+  data: EventSchema
+) => {
+  try {
+    await prisma.event.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        classId: data.classId || null,
+      },
+    });
+    revalidatePath("/list/events");
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true, message: (err as any)?.message ?? "" };
+  }
+};
+
+export const updateEvent = async (
+  currentState: CurrentState,
+  data: EventSchema
+) => {
+  try {
+    await prisma.event.update({
+      where: { id: data.id },
+      data: {
+        title: data.title,
+        description: data.description,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        classId: data.classId || null,
+      },
+    });
+    revalidatePath("/list/events");
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true, message: (err as any)?.message ?? "" };
+  }
+};
+
+export const deleteEvent = async (
+  currentState: CurrentState,
+  data: FormData
+) => {
+  const id = data.get("id") as string;
+  try {
+    await prisma.event.delete({
+      where: { id: parseInt(id) },
+    });
+    revalidatePath("/list/events");
     return { success: true, error: false };
   } catch (err) {
     console.log(err);
